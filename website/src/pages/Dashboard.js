@@ -1,0 +1,12 @@
+import React from 'react';
+import Page from './Page';
+
+const Dashboard = () => {
+  return (
+    <Page title="Dashboard">
+      <p>Welcome to the Noise Monitoring Dashboard</p>
+    </Page>
+  );
+};
+
+export default Dashboard; 
