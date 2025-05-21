@@ -7,31 +7,45 @@ const Dashboard = () => {
   const [latest, setLatest] = useState(null);
   const [recent, setRecent] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deviceLocations, setDeviceLocations] = useState({});
 
   useEffect(() => {
-    const userRef = ref(database, 'User1/data');
+    const usersRef = ref(database, '/');
     const handleData = (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        // Flatten and sort by date/time descending
-        const all = Object.entries(data).flatMap(([date, times]) =>
-          Object.entries(times).map(([time, value]) => ({
-            date,
-            time,
-            ...value
-          }))
-        );
+      const usersData = snapshot.val();
+      let all = [];
+      let locations = {};
+      if (usersData) {
+        Object.entries(usersData).forEach(([userId, userObj]) => {
+          // Store device location
+          if (userObj.location) {
+            locations[userId] = userObj.location;
+          }
+          const data = userObj.data || {};
+          Object.entries(data).forEach(([date, times]) => {
+            Object.entries(times).forEach(([time, value]) => {
+              all.push({
+                deviceId: userId,
+                date,
+                time,
+                ...value
+              });
+            });
+          });
+        });
         all.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
         setLatest(all[0]);
         setRecent(all.slice(0, 10));
+        setDeviceLocations(locations);
       } else {
         setLatest(null);
         setRecent([]);
+        setDeviceLocations({});
       }
       setLoading(false);
     };
-    onValue(userRef, handleData);
-    return () => off(userRef, 'value', handleData);
+    onValue(usersRef, handleData);
+    return () => off(usersRef, 'value', handleData);
   }, []);
 
   return (
@@ -48,7 +62,7 @@ const Dashboard = () => {
               <h2 style={{margin: 0}}>Latest Reading</h2>
               <div style={{fontSize: 32, fontWeight: 700}}>{latest.level} dB</div>
               <div style={{fontSize: 16}}>at {latest.time} on {latest.date.replace(/_/g, '-')}</div>
-              <div style={{fontSize: 14}}>Location: {latest.location?.Latitude}, {latest.location?.Longitude}</div>
+              <div style={{fontSize: 14}}>Location: {deviceLocations[latest.deviceId]?.Latitude}, {deviceLocations[latest.deviceId]?.Longitude}</div>
               <div style={{fontSize: 14}}>Tamper: {latest.tamper ? 'Yes' : 'No'}</div>
             </div>
             <div style={{fontSize: 48, opacity: 0.2}}>🔊</div>
@@ -61,9 +75,9 @@ const Dashboard = () => {
                   <th style={{padding: 8, textAlign: 'left'}}>Date</th>
                   <th style={{padding: 8, textAlign: 'left'}}>Time</th>
                   <th style={{padding: 8, textAlign: 'left'}}>Level (dB)</th>
+                  <th style={{padding: 8, textAlign: 'left'}}>Charge</th>
                   <th style={{padding: 8, textAlign: 'left'}}>Tamper</th>
-                  <th style={{padding: 8, textAlign: 'left'}}>Latitude</th>
-                  <th style={{padding: 8, textAlign: 'left'}}>Longitude</th>
+                  <th style={{padding: 8, textAlign: 'left'}}>DeviceID</th>
                 </tr>
               </thead>
               <tbody>
@@ -72,9 +86,9 @@ const Dashboard = () => {
                     <td style={{padding: 8}}>{r.date.replace(/_/g, '-')}</td>
                     <td style={{padding: 8}}>{r.time}</td>
                     <td style={{padding: 8}}>{r.level}</td>
+                    <td style={{padding: 8}}>{typeof r.charge !== 'undefined' ? r.charge : '-'}</td>
                     <td style={{padding: 8}}>{r.tamper ? 'Yes' : 'No'}</td>
-                    <td style={{padding: 8}}>{r.location?.Latitude}</td>
-                    <td style={{padding: 8}}>{r.location?.Longitude}</td>
+                    <td style={{padding: 8}}>{r.deviceId}</td>
                   </tr>
                 ))}
               </tbody>
